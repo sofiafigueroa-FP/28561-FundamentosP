@@ -1,0 +1,225 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
+#define ARCHIVO "DatosUsuario/datos_usuario.txt"
+#define MAX_ZONAS 10
+#define MAX_TXT   50
+
+typedef struct { int pisos, espacios; } Vivienda;
+
+typedef struct {
+    char espacio[MAX_TXT];
+    char zonas[MAX_ZONAS][MAX_TXT];
+    int  cantidadZonas;
+    int  tiempo; /* siempre en segundos */
+} Sistema;
+
+Vivienda casa   = {0, 0};
+Sistema  sistema = {"", {{0}}, 0, 0};
+
+/*======== UTILIDADES ========*/
+
+void limpiar(){ system("cls"); }
+void limpiarBuffer(){ int c; while((c=getchar())!='\n' && c!=EOF); }
+void pausar(){
+    printf("\n=== Presione ENTER para continuar ===\n");
+    limpiarBuffer();
+    getchar();
+    limpiar();
+}
+
+int leerEntero(const char *msg){
+    int v;
+    do{
+        printf("%s", msg);
+        scanf("%d",&v);
+        if(v<=0) printf("Debe ser mayor que cero.\n");
+    }while(v<=0);
+    return v;
+}
+
+void leerTexto(const char *msg, char *destino, int max){
+    printf("%s", msg);
+    limpiarBuffer();
+    fgets(destino, max, stdin);
+    destino[strcspn(destino,"\n")] = '\0';
+}
+
+/*======== REQ002: VIVIENDA ========*/
+
+void registrarVivienda(){
+    limpiar();
+    printf("=== REGISTRO DE VIVIENDA ===\n");
+    casa.pisos    = leerEntero("Cantidad de pisos: ");
+    casa.espacios = leerEntero("Cantidad de espacios: ");
+    printf("\nVivienda registrada correctamente:\n");
+    printf("Pisos: %d\n", casa.pisos);
+    printf("Espacios: %d\n", casa.espacios);
+    pausar();
+}
+
+/*======== REQ003: ESPACIO ========*/
+
+void registrarEspacio(){
+    limpiar();
+    printf("=== ESPACIO DE MAYOR USO ===\n");
+    leerTexto("Ingrese el espacio (ej. cocina, sala): ", sistema.espacio, MAX_TXT);
+    printf("\nEspacio registrado correctamente: %s\n", sistema.espacio);
+    pausar();
+}
+
+/*======== REQ004: ZONAS PROBLEMA ========*/
+
+void registrarZonas(){
+    int opcion;
+    limpiar();
+    printf("=== REGISTRO DE ZONAS PROBLEMA ===\n");
+    sistema.cantidadZonas = 0;
+
+    do{
+        if(sistema.cantidadZonas >= MAX_ZONAS){
+            printf("Se alcanzo el maximo de zonas (%d).\n", MAX_ZONAS);
+            break;
+        }
+        leerTexto("Ingrese la zona (ej. bano, cocina): ",
+                  sistema.zonas[sistema.cantidadZonas], MAX_TXT);
+        sistema.cantidadZonas++;
+
+        printf("1. Registrar otra zona\n");
+        printf("0. Continuar\n");
+        printf("Seleccione una opcion: ");
+        scanf("%d",&opcion);
+    }while(opcion==1);
+
+    printf("\nZonas registradas:\n");
+    for(int i=0;i<sistema.cantidadZonas;i++)
+        printf(" %d. %s\n", i+1, sistema.zonas[i]);
+    pausar();
+}
+
+/*======== REQ005: TIEMPO DE APAGADO ========*/
+
+void registrarTiempo(){
+    int unidad, valor;
+    limpiar();
+    do{
+        printf("=== TIEMPO DE APAGADO AUTOMATICO ===\n");
+        printf("1. Segundos\n");
+        printf("2. Minutos\n");
+        printf("Seleccione unidad: ");
+        scanf("%d",&unidad);
+
+        if(unidad!=1 && unidad!=2){
+            printf("Opcion invalida.\n");
+            continue;
+        }
+        valor = leerEntero("Ingrese el tiempo: ");
+        sistema.tiempo = (unidad==1) ? valor : valor*60;
+
+        printf("\nTiempo registrado correctamente: %d segundos\n", sistema.tiempo);
+        pausar();
+        return;
+    }while(1);
+}
+
+/*======== REQ006: ALMACENAMIENTO DE DATOS ========*/
+
+void guardarDatos(){
+    int i;
+    limpiar();
+#ifdef _WIN32
+    _mkdir("DatosUsuario");
+#endif
+    FILE *f = fopen(ARCHIVO,"w");
+    if(!f){
+        printf("ERROR AL CREAR EL ARCHIVO.\n");
+        pausar();
+        return;
+    }
+
+    fprintf(f,"SISTEMA AUTOMATICO DE ILUMINACION\n\n");
+    fprintf(f,"Pisos: %d\nEspacios: %d\n\n", casa.pisos, casa.espacios);
+    fprintf(f,"Espacio de mayor uso: %s\n",
+            strlen(sistema.espacio) ? sistema.espacio : "No registrado");
+
+    fprintf(f,"Zonas problema:\n");
+    if(sistema.cantidadZonas==0) fprintf(f," No registradas\n");
+    else for(i=0;i<sistema.cantidadZonas;i++)
+        fprintf(f," - %s\n", sistema.zonas[i]);
+
+    fprintf(f,"Tiempo de apagado: %d segundos\n", sistema.tiempo);
+    fclose(f);
+
+    printf("Datos guardados correctamente en:\n%s\n", ARCHIVO);
+    pausar();
+}
+
+/*======== REQ007: ACTUALIZAR DATOS ========*/
+
+void actualizarDatos(){
+    int opcion;
+    limpiar();
+    printf("=== ACTUALIZAR INFORMACION ===\n");
+    printf("1. Vivienda\n");
+    printf("2. Espacio\n");
+    printf("3. Zonas\n");
+    printf("4. Tiempo\n");
+    printf("0. Volver\n");
+    printf("Seleccione una opcion: ");
+    scanf("%d",&opcion);
+
+    switch(opcion){
+        case 1: registrarVivienda(); guardarDatos(); break;
+        case 2: registrarEspacio();  guardarDatos(); break;
+        case 3: registrarZonas();    guardarDatos(); break;
+        case 4: registrarTiempo();   guardarDatos(); break;
+        case 0: return;
+        default: printf("Opcion invalida.\n"); pausar();
+    }
+}
+
+/*======== REQ001 / REQ008: MENU PRINCIPAL Y SALIDA ========*/
+
+void menuPrincipal(){
+    int opcion;
+    do{
+        limpiar();
+        printf("=========================================\n");
+        printf(" SISTEMA AUTOMATICO DE ILUMINACION\n");
+        printf("=========================================\n");
+        printf("1. Registrar Vivienda\n2. Registrar Espacio\n");
+        printf("3. Registrar Zona Problema\n4. Tiempo de Apagado\n");
+        printf("5. Guardar Datos\n6. Actualizar Datos\n0. Salir\n");
+        printf("=========================================\n");
+        printf("Seleccione una opcion: ");
+        scanf("%d",&opcion);
+
+        switch(opcion){
+            case 1: registrarVivienda(); break;
+            case 2: registrarEspacio();  break;
+            case 3: registrarZonas();    break;
+            case 4: registrarTiempo();   break;
+            case 5: guardarDatos();      break;
+            case 6: actualizarDatos();   break;
+            case 0:
+                limpiar();
+                printf("\nGracias por utilizar el sistema.\n");
+                break;
+            default:
+                printf("\nOpcion invalida.\n");
+                system("pause");
+        }
+    }while(opcion!=0);
+}
+
+int main(){
+#ifdef _WIN32
+    _mkdir("DatosUsuario");
+#endif
+    menuPrincipal();
+    return 0;
+}
